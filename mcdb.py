@@ -63,6 +63,8 @@ async def stats(ctx):
 
 @client.command(name='server', description='Returns server and player info at the time of request')
 async def server(ctx):
+	await ctx.message.delete()  # deletes users message to prevent buildup of commands
+
 	server = MinecraftServer.lookup(minecraft_server_ip)
 	status = server.status()
 
@@ -80,22 +82,30 @@ async def server(ctx):
 	emojis = {
 	'server_status_logo': '\U0001F7E3',  # purple circle
 	'online': '\U0001F7E2',  # green circle
-	'offline': '\U0001F534',
+	'offline': '\U000026AB',  # black circle 
 	'next_arrow': '\U000027A1',
 	'back_arrow': '\U00002B05',
 	'close': '\U0000274C'
 	}
 	
-	server_status = discord.Embed(title=f'{emojis["server_status_logo"]} **{minecraft_server_ip} server info**',\
-			description=f"***{server_desc}***", color=0xBA74EE)
-	server_status.add_field(name=f"**Server Info**",\
-            value=f'Latency: {server_latency}ms\n Members online: {num_players_online}\n\
-            For a list of online players, see next page', inline=True)
-	server_status.add_field(name=f"**Server members**",\
-			value='{users_connected}\n *Status:* Online'.format(**users_connected))
-	
-	message = None
-	embed = await ctx.send(embed=server_status)
+	# messages
+	server_info = discord.Embed(title=f'**{minecraft_server_ip} SERVER INFO**',\
+			description=f"*{server_desc}*", color=0xBA74EE)
+	server_info.set_author(name=client.user.name, icon_url= client.user.avatar_url)
+	server_info.add_field(name=f"**Server Info**",\
+            value=f'***Latency:*** {server_latency}ms\n***Total Members:*** n\n***Members online:*** {num_players_online}\n\
+            ***Admin Online***: n\n\n\n\nPage 1/2', inline=True)
+
+	member_status = discord.Embed(title=f'**{minecraft_server_ip} MEMBER STATUS**',\
+			description=f"*{server_desc}*", color=0xBA74EE)
+	member_status.set_author(name=client.user.name, icon_url= client.user.avatar_url)
+
+	# https://stackoverflow.com/questions/51796005/reaction-pagination-button-forward-and-back-python
+	message = ctx.author.mention
+	embed = await ctx.send(message, embed=server_info)
+	await embed.add_reaction(emojis['next_arrow'])
+	await embed.add_reaction(emojis['close'])
+
 
 
 
