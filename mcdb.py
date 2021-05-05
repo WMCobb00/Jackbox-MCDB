@@ -11,7 +11,7 @@ import mcstatus
 from mcstatus import MinecraftServer
 import json
 import random
-import datetime
+from datetime import datetime
 
 
 """ Client Vars """
@@ -29,7 +29,7 @@ minecraft_server_ip = ''  # insert minecraft server ip here
 
 emojis = {
 		'online': '\U0001F7E2',  # green circle
-		'offline': '\U000026AB',  # black circle
+		'offline': '\U000026AA',  # white circle
 		'right_arrow': '\U000027A1',
 		'left_arrow': '\U00002B05',
 		'close': '\U0000274C'
@@ -38,7 +38,7 @@ emojis = {
 
 """ Helper Functions """
 
-
+# used for reaction controls
 def predicate(message, l, r):
 	def check(reaction, user):
 		if reaction.message.id != message.id or user == client.user:
@@ -115,15 +115,40 @@ async def server(ctx):
 	server_latency = status.latency  # in ms
 	# users_connected provides a list of player names currently online
 	if 'sample' in [key for key in status.raw['players']]:
-		members_connected = [ user['name'] for user in status.raw['players']['sample'] ]
+		members_online = [ user['name'] for user in status.raw['players']['sample'] ]
 	else:
-		members_connected = []
+		members_online = []
 	# server_desc provides the server description, if one exists
 	if 'text' in [key for key in status.raw['description']]:
 		server_desc = status.raw['description']['text']
 	else:
 		server_desc = ''
-	
+
+	# gets data from Members.json
+	members_file_r = open("./.resources/members.json", "r")
+	members = json.load(members_file_r)
+	members_file_r.close()
+
+	total_members = 0
+	admin_online = 0
+	member_list = ''  # Used for member_status embed
+	for i in members:
+		total_members += 1
+		if i in members_online:
+			members[i]["LastSeen"] = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+			print(members)
+			member_list += f"{i}  {emojis['online']}\n*Last seen:* {members[i]['LastSeen']}\n"
+			if i["IsAdmin"] == True:
+				admin_online += 1
+		else:
+			member_list += f"{i}  {emojis['offline']}\n*Last seen:* {members[i]['LastSeen']}\n"
+	member_list += '\n\n\n\nPage 2/2'
+
+	# updates data in Members.json
+	members_file_w = open("./.resources/members.json", "w")
+	json.dump(members, members_file_w)
+	members_file_w.close()
+
 	# messages
 	messages = []
 
@@ -131,31 +156,26 @@ async def server(ctx):
 			description=f"*{server_desc}*", color=0xBA74EE)
 	server_info.set_author(name=client.user.name, icon_url= client.user.avatar_url)
 	server_info.add_field(name=f"**Server Info**",
-					value=f'***Latency:*** {server_latency}ms\n***Total Members:*** n\n***Members online:*** \
-{num_members_online}\n***Admin Online***: n\n\n\n\nPage 1/2', inline=True)
+					value=f'***Latency:*** {server_latency}ms\n***Total Members:*** {total_members}\n\
+					***Members online:*** {num_members_online}\n***Admin Online***: {admin_online}\n\n\n\nPage 1/2', inline=True)
 	messages.append(server_info)
-
-	player_list = 'h'
-	for _ in range(len(members_connected)-1):
-		player_list += f"{members_connected[_]}  {emojis['online']}\n"
 
 	member_status = discord.Embed(title=f'**{minecraft_server_ip} MEMBER STATUS**',
 					description=f"*{server_desc}*", color=0xBA74EE)
 	member_status.set_author(name=client.user.name, icon_url= client.user.avatar_url)
-	member_status.add_field(name='**Member Status**', value=player_list, inline=True)
+	member_status.add_field(name='**Member Status**', value=member_list, inline=True)
 	messages.append(member_status)
 
 	# loop to send message and allow for reaction controls
 	index = 0
 	msg = None
-	action = ctx.send
 	send_flag = True
 	while True:
 		if send_flag:
-			res = await action(user_tag, embed=messages[index])
+			res = await ctx.send(user_tag, embed=messages[index])
 			send_flag = False
 		else:
-			res = await action(embed=messages[index])
+			res = await msg.edit(embed=messages[index])
 		if res is not None:
 			msg = res
 		l = index != 0
@@ -180,7 +200,6 @@ async def server(ctx):
 			index += 1
 			await msg.clear_reaction(emojis['right_arrow'])
 		await msg.clear_reaction(emojis['close'])
-		action = msg.edit
 
 
 if __name__ == '__main__':
