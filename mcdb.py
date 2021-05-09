@@ -84,6 +84,9 @@ async def update_members(interval: int, members_online: get_members_online()):
 				else:
 					#  IsAdmin is set to False by default and is updated manually
 					members[i] = {"LastSeen": datetime.now().strftime("%m/%d/%Y %H:%M:%S"), "IsAdmin": False}
+			members_file_w = open("./.resources/members.json", "w")
+			json.dump(members, members_file_w)
+			members_file_w.close()
 		await asyncio.sleep(interval)
 
 
@@ -230,7 +233,7 @@ async def server(ctx):
 	server_info.set_author(name=client.user.name, icon_url=client.user.avatar_url)
 	server_info.add_field(name=f"**Server Info**",
 					value=f'***Latency:*** {server_latency}ms\n***Total Members:*** {total_members}\n\
-					\r***Members online:*** {num_members_online}\n***Admin Online***: {admin_online}\n\n\n\nPage 1/2',
+					***Members online:*** {num_members_online}\n***Admin Online***: {admin_online}\n\n\n\nPage 1/2',
 						  inline=True)
 	messages.append(server_info)
 
