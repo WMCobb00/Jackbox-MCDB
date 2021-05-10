@@ -130,7 +130,7 @@ async def on_ready():
 	# Sets activity status
 	await client.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=listening_to))
 	print(f'Client is listening to commands prefixed with {cmd_prefix}', end='\n')
-	await update_members(120, get_members_online())  # checks for status changes in members being online to update json
+	await update_members(30, get_members_online())  # checks for status changes in members being online to update json
 
 
 @client.event
@@ -212,9 +212,8 @@ async def server(ctx):
 		total_members += 1
 		if i in members_online:
 			members[i]["LastSeen"] = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
-			print(members)
 			member_list += f"{i}  {emojis['online']}\n*Last seen:* {members[i]['LastSeen']}\n"
-			if i["IsAdmin"] == True:
+			if members[i]["IsAdmin"] == True:
 				admin_online += 1
 		else:
 			member_list += f"{i}  {emojis['offline']}\n*Last seen:* {members[i]['LastSeen']}\n"
