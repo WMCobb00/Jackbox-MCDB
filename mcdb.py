@@ -161,6 +161,77 @@ def predicate(message, l, r):
 	return check
 
 
+def updated_member_info(file: str, members_online: list):
+	"""
+	Provides an Updated member_list string, total_members int, and admin_online int for the server() command embed
+	:param file: The json file containing members
+	:param members_online: A list from the server status that has members currently online
+	:return: A tuple containing member_list string, total_members int, and admin_online int
+	"""
+	# gets data from Members.json
+	members = load_json_data(file)
+
+	total_members = 0
+	admin_online = 0
+	member_list = ''  # Used for member_status embed
+	for i in members:
+		total_members += 1
+		if i in members_online:
+			members[i]["LastSeen"] = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+			member_list += f"{i}  {emojis['online']}\n*Last seen:* {members[i]['LastSeen']}\n"
+			if members[i]["IsAdmin"]:
+				admin_online += 1
+		else:
+			member_list += f"{i}  {emojis['offline']}\n*Last seen:* {members[i]['LastSeen']}\n"
+	member_list += '\n\n\n\nPage 2/2'
+
+	# updates data in Members.json
+	dump_json_data(members, "./.resources/members.json")
+	return total_members, admin_online, member_list
+
+
+async def reaction_controlled_embed(ctx: discord.ext.commands.context.Context, messages: list):
+	"""
+	Passes a list of embedded messages and provides reaction controls for them on Discord for users
+	:param ctx: The context of the command called
+	:param messages: The list of embeds
+	:return: None
+	"""
+	msg_tag = ctx.author.mention
+	index = 0
+	msg = None
+	send_flag = True
+	while True:
+		if send_flag:
+			res = await ctx.send(msg_tag, embed=messages[index])
+			send_flag = False
+		else:
+			res = await msg.edit(embed=messages[index])
+		if res is not None:
+			msg = res
+		l = index != 0
+		r = index != len(messages) - 1
+		if l:
+			await msg.add_reaction(emojis['left_arrow'])
+		if r:
+			await msg.add_reaction(emojis['right_arrow'])
+		await msg.add_reaction(emojis['close'])
+		try:
+			react, user = await client.wait_for('reaction_add', check=predicate(msg, l, r), timeout=60.0)
+		except asyncio.TimeoutError:  # user has 60.0 secs to react to message else it is deleted and loop exits
+			await msg.delete()
+			break
+		if react.emoji == emojis['close']:  # deletes message if close emoji is selected
+			await msg.delete()
+			break
+		if react.emoji == emojis['left_arrow']:
+			index -= 1
+			await msg.clear_reaction(emojis['left_arrow'])
+		elif react.emoji == emojis['right_arrow']:
+			index += 1
+			await msg.clear_reaction(emojis['right_arrow'])
+		await msg.clear_reaction(emojis['close'])
+
 """ Client Events """
 
 
@@ -226,7 +297,6 @@ async def server(ctx):
 	:return: None
 	"""
 	await ctx.message.delete()  # deletes users message to prevent buildup of commands
-	user_tag = ctx.author.mention
 
 	status = get_server_status(minecraft_server_ip)
 
@@ -245,78 +315,28 @@ async def server(ctx):
 	else:
 		server_desc = ''
 
-	# gets data from Members.json
-	members = load_json_data("./.resources/members.json")
+	member_info = updated_member_info("./.resources/members.json", members_online)
 
-	total_members = 0
-	admin_online = 0
-	member_list = ''  # Used for member_status embed
-	for i in members:
-		total_members += 1
-		if i in members_online:
-			members[i]["LastSeen"] = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
-			member_list += f"{i}  {emojis['online']}\n*Last seen:* {members[i]['LastSeen']}\n"
-			if members[i]["IsAdmin"]:
-				admin_online += 1
-		else:
-			member_list += f"{i}  {emojis['offline']}\n*Last seen:* {members[i]['LastSeen']}\n"
-	member_list += '\n\n\n\nPage 2/2'
-
-	# updates data in Members.json
-	dump_json_data(members, "./.resources/members.json")
-
-	# messages
+	# list of embedded messages to be sent
 	messages = []
 
 	server_info = discord.Embed(title=f'**{minecraft_server_ip} SERVER INFO**',
 			description=f"*{server_desc}*", color=0xBA74EE)
 	server_info.set_author(name=client.user.name, icon_url=client.user.avatar_url)
 	server_info.add_field(name=f"**Server Info**",
-					value=f'***Latency:*** {server_latency}ms\n***Total Members:*** {total_members}\n\
-					***Members online:*** {num_members_online}\n***Admin Online***: {admin_online}\n\n\n\nPage 1/2',
+					value=f'***Latency:*** {server_latency}ms\n***Total Members:*** {member_info[0]}\n\
+					***Members online:*** {num_members_online}\n***Admin Online***: {member_info[1]}\n\n\n\nPage 1/2',
 						  inline=True)
 	messages.append(server_info)
 
 	member_status = discord.Embed(title=f'**{minecraft_server_ip} MEMBER STATUS**',
 					description=f"*{server_desc}*", color=0xBA74EE)
 	member_status.set_author(name=client.user.name, icon_url=client.user.avatar_url)
-	member_status.add_field(name='**Member Status**', value=member_list, inline=True)
+	member_status.add_field(name='**Member Status**', value=member_info[2], inline=True)
 	messages.append(member_status)
 
-	# loop to send message and allow for reaction controls
-	index = 0
-	msg = None
-	send_flag = True
-	while True:
-		if send_flag:
-			res = await ctx.send(user_tag, embed=messages[index])
-			send_flag = False
-		else:
-			res = await msg.edit(embed=messages[index])
-		if res is not None:
-			msg = res
-		l = index != 0
-		r = index != len(messages) - 1
-		if l:
-			await msg.add_reaction(emojis['left_arrow'])
-		if r:
-			await msg.add_reaction(emojis['right_arrow'])
-		await msg.add_reaction(emojis['close'])
-		try:
-			react, user = await client.wait_for('reaction_add', check=predicate(msg, l, r), timeout=60.0)
-		except asyncio.TimeoutError:  # user has 60.0 secs to react to message else it is deleted and loop exits
-			await msg.delete()
-			break
-		if react.emoji == emojis['close']:  # deletes message if close emoji is selected
-			await msg.delete()
-			break
-		if react.emoji == emojis['left_arrow']:
-			index -= 1
-			await msg.clear_reaction(emojis['left_arrow'])
-		elif react.emoji == emojis['right_arrow']:
-			index += 1
-			await msg.clear_reaction(emojis['right_arrow'])
-		await msg.clear_reaction(emojis['close'])
+	# loop to send embedded messages and allow for reaction controls
+	await reaction_controlled_embed(ctx, messages)
 
 
 if __name__ == '__main__':
