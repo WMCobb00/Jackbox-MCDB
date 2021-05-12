@@ -40,6 +40,11 @@ emojis = {
 
 
 def load_json_data(path: str):
+	"""
+	Loads a Python dict from a json file
+	:param path: String path to the json file
+	:return: a Python dict of the json data
+	"""
 	try:
 		file_r = open(path, "r")
 	except FileNotFoundError:
@@ -55,6 +60,12 @@ def load_json_data(path: str):
 
 
 def dump_json_data(file_data: dict, path: str):
+	"""
+	Dumps a Python dict to a json file
+	:param file_data: The Python dict to be converted and dumped
+	:param path: String path to the json file
+	:return: None
+	"""
 	try:
 		file_w = open(path, "w")
 	except FileNotFoundError:
@@ -68,14 +79,23 @@ def dump_json_data(file_data: dict, path: str):
 	file_w.close()
 
 
-def get_server_description():
+def get_server_status(server_ip: str):
+	"""
+	Looks up a provided server ip and returns its status
+	:param server_ip: A string containing the server IP
+	:return: The server status (An mcstatus PingResponse object)
+	"""
+	server = MinecraftServer.lookup(server_ip)
+	status = server.status()
+	return status
+
+
+def get_server_description(status: mcstatus.pinger.PingResponse):
 	"""
 	Checks to see if and what the server's provided description is
-	:return:
+	:param status: An mcstatus PingResponse object
+	:return: The servers description if one exists, else None
 	"""
-	server = MinecraftServer.lookup(minecraft_server_ip)
-	status = server.status()
-
 	if 'text' in [key for key in status.raw['description']]:
 		server_desc = status.raw['description']['text']
 	else:
@@ -83,23 +103,23 @@ def get_server_description():
 	return server_desc
 
 
-def get_members_online():
+def get_members_online(status: mcstatus.pinger.PingResponse):
 	"""
 	Gets the number of members currently online
+	:param status: An mcstatus PingResponse object
 	:return: The list of members online if any, else None
 	"""
-	server = MinecraftServer.lookup(minecraft_server_ip)
-	status = server.status()
-
 	if 'sample' in [key for key in status.raw['players']]:
 		members_online = [user['name'] for user in status.raw['players']['sample']]
 		return members_online
 	return None
 
 
-async def update_members(interval: int, members_online: get_members_online()):
+async def update_members(interval: int, members_online: list):
 	"""
 	Checks for members online in set intervals to update their last seen status
+	:param interval: The time interval between auto updates
+	:param members_online: The list of current members online
 	:return:
 	"""
 	while True:
@@ -117,7 +137,6 @@ async def update_members(interval: int, members_online: get_members_online()):
 
 def predicate(message, l, r):
 	"""
-
 	:param message: The Discord message being monitored
 	:param l: Checks for a message with a lesser index value in the message list
 	:param r: Checks for a message with a greater index value in the message list
@@ -155,13 +174,15 @@ async def on_ready():
 	# Sets activity status
 	await client.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=listening_to))
 	print(f'Client is listening to commands prefixed with {cmd_prefix}', end='\n')
-	await update_members(30, get_members_online())  # checks for status changes in members being online to update json
+	# checks for status changes in members being online to update Members.json
+	await update_members(30, get_members_online(get_server_status(minecraft_server_ip)))
 
 
 @client.event
 async def on_message(message):
 	"""
 	Executed when a message is sent in a text channel
+	:param message: Any message sent in a server the bot is in
 	:return: None
 	"""
 	if message.channel.name == 'general':  # set the name of the channel the bot should listen to here
@@ -207,21 +228,20 @@ async def server(ctx):
 	await ctx.message.delete()  # deletes users message to prevent buildup of commands
 	user_tag = ctx.author.mention
 
-	server = MinecraftServer.lookup(minecraft_server_ip)
-	status = server.status()
+	status = get_server_status(minecraft_server_ip)
 
 	num_members_online = status.players.online
 	server_latency = status.latency  # in ms
 
 	# get_members_online provides a list of player names currently online
-	if get_members_online() is None:
+	if get_members_online(status) is None:
 		members_online = []
 	else:
-		members_online = get_members_online()
+		members_online = get_members_online(status)
 
 	# server_desc provides the server description, if one exists
-	if get_server_description() is not None:
-		server_desc = get_server_description()
+	if get_server_description(status) is not None:
+		server_desc = get_server_description(status)
 	else:
 		server_desc = ''
 
@@ -236,7 +256,7 @@ async def server(ctx):
 		if i in members_online:
 			members[i]["LastSeen"] = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
 			member_list += f"{i}  {emojis['online']}\n*Last seen:* {members[i]['LastSeen']}\n"
-			if members[i]["IsAdmin"] == True:
+			if members[i]["IsAdmin"]:
 				admin_online += 1
 		else:
 			member_list += f"{i}  {emojis['offline']}\n*Last seen:* {members[i]['LastSeen']}\n"
