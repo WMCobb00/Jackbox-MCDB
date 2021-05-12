@@ -39,6 +39,35 @@ emojis = {
 """ Helper Functions """
 
 
+def load_json_data(path: str):
+	try:
+		file_r = open(path, "r")
+	except FileNotFoundError:
+		print('load_json_data() ERROR: File was not found')
+		return None
+	try:
+		file_data = json.load(file_r)
+	except json.decoder.JSONDecodeError:
+		print('load_json_data() ERROR: Improper file type or format')
+		return None
+	file_r.close()
+	return file_data
+
+
+def dump_json_data(file_data: dict, path: str):
+	try:
+		file_w = open(path, "w")
+	except FileNotFoundError:
+		print('dump_json_data() ERROR: File was not found')
+		return None
+	try:
+		json.dump(file_data, file_w)
+	except json.decoder.JSONDecodeError:
+		print('dump_json_data() ERROR: Improper file type or format')
+		return None
+	file_w.close()
+
+
 def get_server_description():
 	"""
 	Checks to see if and what the server's provided description is
@@ -75,18 +104,14 @@ async def update_members(interval: int, members_online: get_members_online()):
 	"""
 	while True:
 		if members_online is not None:
-			members_file_r = open("./.resources/members.json", "r")
-			members = json.load(members_file_r)
-			members_file_r.close()
+			members = load_json_data("./.resources/members.json")
 			for i in members_online:
 				if i in members:
 					members[i]["LastSeen"] = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
 				else:
 					#  IsAdmin is set to False by default and is updated manually
 					members[i] = {"LastSeen": datetime.now().strftime("%m/%d/%Y %H:%M:%S"), "IsAdmin": False}
-			members_file_w = open("./.resources/members.json", "w")
-			json.dump(members, members_file_w)
-			members_file_w.close()
+			dump_json_data(members, "./.resources/members.json")
 		await asyncio.sleep(interval)
 
 
@@ -201,9 +226,7 @@ async def server(ctx):
 		server_desc = ''
 
 	# gets data from Members.json
-	members_file_r = open("./.resources/members.json", "r")
-	members = json.load(members_file_r)
-	members_file_r.close()
+	members = load_json_data("./.resources/members.json")
 
 	total_members = 0
 	admin_online = 0
@@ -220,9 +243,7 @@ async def server(ctx):
 	member_list += '\n\n\n\nPage 2/2'
 
 	# updates data in Members.json
-	members_file_w = open("./.resources/members.json", "w")
-	json.dump(members, members_file_w)
-	members_file_w.close()
+	dump_json_data(members, "./.resources/members.json")
 
 	# messages
 	messages = []
