@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="cdf77797-d402-4a02-949a-57e58570bcaa" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.resources/Locations.json" beforeDir="false" afterPath="$PROJECT_DIR$/.resources/Locations.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mcdb.py" beforeDir="false" afterPath="$PROJECT_DIR$/mcdb.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -13,7 +13,7 @@
   </component>
   <component name="CoverageDataManager">
     <SUITE FILE_PATH="coverage/Jackbox_MCDB$temp.coverage" NAME="temp Coverage Results" MODIFIED="1620250272621" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/Jackbox_MCDB$mcdb.coverage" NAME="mcdb Coverage Results" MODIFIED="1620854420931" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Jackbox_MCDB$mcdb.coverage" NAME="mcdb Coverage Results" MODIFIED="1620861470203" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="DatabaseView">
     <option name="SHOW_INTERMEDIATE" value="true" />
@@ -34,8 +34,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/mcdb.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="263">
-              <caret line="337" column="36" selection-start-line="337" selection-start-column="36" selection-end-line="337" selection-end-column="36" />
+            <state relative-caret-position="389">
+              <caret line="319" column="54" selection-start-line="319" selection-start-column="54" selection-end-line="319" selection-end-column="54" />
               <folding>
                 <element signature="e#165#179#0" expanded="true" />
               </folding>
@@ -47,7 +47,16 @@
         <entry file="file://$PROJECT_DIR$/.resources/Members.json">
           <provider selected="true" editor-type-id="text-editor">
             <state>
-              <caret column="272" selection-start-column="272" selection-end-column="272" />
+              <caret lean-forward="true" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/.resources/Locations.json">
+          <provider selected="true" editor-type-id="text-editor">
+            <state>
+              <caret column="1" selection-start-column="1" selection-end-column="1" />
             </state>
           </provider>
         </entry>
@@ -62,6 +71,7 @@
       <list>
         <option value="$PROJECT_DIR$/temp.py" />
         <option value="$PROJECT_DIR$/.resources/Members.json" />
+        <option value="$PROJECT_DIR$/.resources/Locations.json" />
         <option value="$PROJECT_DIR$/mcdb.py" />
       </list>
     </option>
@@ -181,12 +191,12 @@
       <workItem from="1620263785489" duration="433000" />
       <workItem from="1620503212829" duration="4750000" />
       <workItem from="1620601624805" duration="1211000" />
-      <workItem from="1620845715156" duration="8635000" />
+      <workItem from="1620845715156" duration="15565000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="32882000" />
+    <option name="totallyTimeSpent" value="39812000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-8" y="-8" width="1616" height="876" extended-state="6" />
@@ -197,7 +207,7 @@
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.32974428" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.32974428" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
@@ -224,17 +234,24 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/.resources/PlayerStatus.json" />
     <entry file="file://$PROJECT_DIR$/temp.py" />
+    <entry file="file://$PROJECT_DIR$/.resources/Locations.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state>
+          <caret column="1" selection-start-column="1" selection-end-column="1" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/.resources/Members.json">
       <provider selected="true" editor-type-id="text-editor">
         <state>
-          <caret column="272" selection-start-column="272" selection-end-column="272" />
+          <caret lean-forward="true" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/mcdb.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="263">
-          <caret line="337" column="36" selection-start-line="337" selection-start-column="36" selection-end-line="337" selection-end-column="36" />
+        <state relative-caret-position="389">
+          <caret line="319" column="54" selection-start-line="319" selection-start-column="54" selection-end-line="319" selection-end-column="54" />
           <folding>
             <element signature="e#165#179#0" expanded="true" />
           </folding>

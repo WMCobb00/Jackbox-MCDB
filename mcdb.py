@@ -27,13 +27,20 @@ minecraft_server_ip = ''  # insert Minecraft server ip here
 """ Global Vars """
 
 
+json_files = {
+	'log': './.resources/CommandLog.jso',
+	'locations': './.resources/Locations.json',
+	'members': './.resources/Members.json'
+}
+
+
 emojis = {
-		'online': '\U0001F7E2',  # green circle
-		'offline': '\U000026AA',  # white circle
-		'right_arrow': '\U000027A1',
-		'left_arrow': '\U00002B05',
-		'close': '\U0000274C'
-	}
+	'online': '\U0001F7E2',  # green circle
+	'offline': '\U000026AA',  # white circle
+	'right_arrow': '\U000027A1',
+	'left_arrow': '\U00002B05',
+	'close': '\U0000274C'
+}
 
 
 """ Helper Functions """
@@ -124,14 +131,14 @@ async def update_members(interval: int, members_online: list):
 	"""
 	while True:
 		if members_online is not None:
-			members = load_json_data("./.resources/members.json")
+			members = load_json_data(json_files['members'])
 			for i in members_online:
 				if i in members:
 					members[i]["LastSeen"] = datetime.now().strftime("%m/%d/%Y %H:%M:%S")
 				else:
 					#  IsAdmin is set to False by default and is updated manually
 					members[i] = {"LastSeen": datetime.now().strftime("%m/%d/%Y %H:%M:%S"), "IsAdmin": False}
-			dump_json_data(members, "./.resources/members.json")
+			dump_json_data(members, json_files['members'])
 		await asyncio.sleep(interval)
 
 
@@ -186,7 +193,7 @@ def updated_member_info(file: str, members_online: list):
 	member_list += '\n\n\n\nPage 2/2'
 
 	# updates data in Members.json
-	dump_json_data(members, "./.resources/members.json")
+	dump_json_data(members, json_files['members'])
 	return total_members, admin_online, member_list
 
 
@@ -232,6 +239,7 @@ async def reaction_controlled_embed(ctx: discord.ext.commands.context.Context, m
 			await msg.clear_reaction(emojis['right_arrow'])
 		await msg.clear_reaction(emojis['close'])
 
+
 """ Client Events """
 
 
@@ -263,9 +271,60 @@ async def on_message(message):
 """ Client Commands """
 
 
-@client.command(name='add', description='Adds a correctly formatted POI to the database')
-async def add(ctx):
-	pass
+@client.command(name='add', description='Adds a correctly formatted location to the database')
+async def add(ctx, *args):
+	await ctx.message.delete()
+	locs = load_json_data("./.resources/Locations.json")
+
+	messages = []
+	# formatting error message
+	format_err = discord.Embed(title=f'**FORMATTING ERROR**', color=0xEC1C1C,
+							   description='The format of the location data provided was not formatted correctly')
+	format_err.set_author(name=client.user.name, icon_url=client.user.avatar_url)
+	format_err.add_field(name=f"**Examples**",
+						  value='```Format for entering coordinates:\n\n'
+								'Symbol of dimension (i.e. Overworld=O, Nether=N, End=E),\
+								 Name of location, x-coord, y-coord, z-coord\n\n'
+								'Examples:\n\n'
+								'Overworld Zombie Spawner:\n'
+								'O, Zombie Spawner, 53, 35, 639\n\n'
+								'Nether Bastian:\n'
+								'N, Bastian, -239, 36, 513```', inline=True)
+
+	# formatting location name already exists
+	already_exists_err = discord.Embed(title=f'**NAME ALREADY IN USE**', color=0xFFFF00,
+							   description='The name you selected has already been used, maybe try another?')
+	already_exists_err.set_author(name=client.user.name, icon_url=client.user.avatar_url)
+
+	# checks to see that message is formatted correctly
+	new_loc = []
+	if len(args) != 5:
+		messages.append(format_err)
+		await reaction_controlled_embed(ctx, messages)
+		return
+	for i in range(len(args)):
+		new_loc.append(args[i].lower().replace(",", ""))  # removes commas from all components
+		if i != 1:
+			new_loc[i].replace(" ", "")  # removes spaces from all components except for name
+	if new_loc[1] not in locs:
+		if new_loc[0] == "o" or "n" or "e":
+			try:
+				int(new_loc[2])
+				int(new_loc[3])
+				int(new_loc[4])
+			except ValueError:
+				messages.append(format_err)
+				await reaction_controlled_embed(ctx, messages)
+				return
+			locs[new_loc[1]] = {"Dimension": new_loc[0], "X": new_loc[2], "Y": new_loc[3], "Z": new_loc[4]}
+			dump_json_data(locs, json_files['locations'])
+		else:
+			messages.append(format_err)
+			await reaction_controlled_embed(ctx, messages)
+			return
+	else:
+		messages.append(already_exists_err)
+		await reaction_controlled_embed(ctx, messages)
 
 
 @client.command(name='find', description='Returns POI data of all POI having names which contain the input name')
@@ -315,7 +374,7 @@ async def server(ctx):
 	else:
 		server_desc = ''
 
-	member_info = updated_member_info("./.resources/members.json", members_online)
+	member_info = updated_member_info(json_files['members'], members_online)
 
 	# list of embedded messages to be sent
 	messages = []
