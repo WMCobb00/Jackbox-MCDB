@@ -5,7 +5,7 @@ Desc: A Minecraft coordinate and player database Discord bot for the Jackbox Dis
 """
 
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 import asyncio
 import mcstatus
 from mcstatus import MinecraftServer
@@ -28,7 +28,7 @@ minecraft_server_ip = ''  # insert Minecraft server ip here
 
 
 json_files = {
-	'log': './.resources/CommandLog.jso',
+	'log': './.resources/CommandLog.json',
 	'locations': './.resources/Locations.json',
 	'members': './.resources/Members.json'
 }
@@ -172,6 +172,13 @@ def predicate(message, l, r):
 	return check
 
 
+def update_log(command: str, file: str, ctx: discord.ext.commands.context.Context):
+	log = load_json_data(file)
+	log[datetime.now().strftime("%m/%d/%Y %H:%M:%S")] = {"Command": f"{command}",
+														 "UserID": ctx.message.id,
+														 "UserName": f"{ctx.author}"}
+	dump_json_data(log, file)
+
 def updated_member_info(file: str, members_online: list):
 	"""
 	Provides an Updated member_list string, total_members int, and admin_online int for the server() command embed
@@ -244,6 +251,21 @@ async def reaction_controlled_embed(ctx: discord.ext.commands.context.Context, m
 		await msg.clear_reaction(emojis['close'])
 
 
+def get_distance(loc_name: str, loc1x: int, loc1y: int, loc1z: int, loc2x: int, loc2y: int, loc2z: int):
+	"""
+	Takes coordinates of two locations and returns the distance between them
+	:param loc_name: Name of stored lpcation
+	:param loc1x: X val of loc1
+	:param loc1y: Y val of loc 1
+	:param loc1z: Z val of loc1
+	:param loc2x: X val of loc2
+	:param loc2y: Y val of loc2
+	:param loc2z: Z val of loc2
+	:return: A tuple containing the name of the known location and its distance from loc2
+	"""
+	return loc_name, (((loc2x-loc1x)**2)+((loc2y-loc1y)**2)+((loc2z-loc1z)**2))**0.5
+
+
 """ Client Events """
 
 
@@ -283,23 +305,26 @@ async def add(ctx, *args):
 	:param args: All arguments following the add command
 	:return: None
 	"""
+	update_log('add', json_files["log"], ctx)
 	await ctx.message.delete()
 	locs = load_json_data("./.resources/Locations.json")
 
 	messages = []
 	# formatting error message
 	format_err = discord.Embed(title=f'**FORMATTING ERROR**', color=0x0051FF,
-							   description='The format of the location data provided was not formatted correctly')
+							   description='The location data provided was not formatted correctly')
 	format_err.set_author(name=client.user.name, icon_url=client.user.avatar_url)
 	format_err.add_field(name=f"**Examples**",
 						  value='```Format for entering coordinates:\n\n'
 								'Symbol of dimension (i.e. Overworld=O, Nether=N, End=E),\
-								 Name of location, x-coord, y-coord, z-coord\n\n'
+								 Name of location, x-coord, y-coord, z-coord\n'
+								'or\n'
+								'Name of location x-coord y-coord z-coord\n\n'
 								'Examples:\n\n'
 								'Overworld Zombie Spawner:\n'
 								'O, Zombie Spawner, 53, 35, 639\n\n'
 								'Nether Bastian:\n'
-								'N, Bastian, -239, 36, 513```', inline=True)
+								'N Bastian -239 36 513```', inline=True)
 
 	# formatting location name already exists
 	already_exists_err = discord.Embed(title=f'**NAME ALREADY IN USE**', color=0xFFFF00,
@@ -310,7 +335,7 @@ async def add(ctx, *args):
 	new_loc = []
 	if len(args) != 5:
 		messages.append(format_err)
-		await reaction_controlled_embed(ctx, messages, 10)
+		await reaction_controlled_embed(ctx, messages, 20)
 		return
 	for i in range(len(args)):
 		new_loc.append(args[i].lower().replace(",", ""))  # removes commas from all components
@@ -324,7 +349,7 @@ async def add(ctx, *args):
 				int(new_loc[4])
 			except ValueError:
 				messages.append(format_err)
-				await reaction_controlled_embed(ctx, messages, 10)
+				await reaction_controlled_embed(ctx, messages, 20)
 				return
 			if new_loc[0] == "o":
 				new_loc[0] = "overworld"
@@ -332,16 +357,17 @@ async def add(ctx, *args):
 				new_loc[0] = "nether"
 			else:
 				new_loc[0] = "end"
-			locs[new_loc[1]] = {"Dimension": new_loc[0], "X": new_loc[2], "Y": new_loc[3], "Z": new_loc[4]}
+			locs[new_loc[1]] = {"Dimension": new_loc[0], "X": int(new_loc[2]), "Y": int(new_loc[3]),
+								"Z": int(new_loc[4])}
 			dump_json_data(locs, json_files['locations'])
 		else:
 			print(new_loc[0])
 			messages.append(format_err)
-			await reaction_controlled_embed(ctx, messages, 10)
+			await reaction_controlled_embed(ctx, messages, 20)
 			return
 	else:
 		messages.append(already_exists_err)
-		await reaction_controlled_embed(ctx, messages, 10)
+		await reaction_controlled_embed(ctx, messages, 20)
 
 
 @client.command(name='remove', description='Removes an existing location from the database')
@@ -352,6 +378,7 @@ async def remove(ctx, *args):
 	:param args: The name of the location to be removed
 	:return: None
 	"""
+	update_log('remove', json_files["log"], ctx)
 	await ctx.message.delete()
 	locs = load_json_data("./.resources/Locations.json")
 
@@ -362,7 +389,7 @@ async def remove(ctx, *args):
 
 	# formatting unauthorized user
 	unauth_user_err = discord.Embed(title=f'**UNAUTHORIZED USER**', color=0xFFFF00,
-									   description='This command is only for use by selected users')
+									   description='This command is only for use by certain users')
 	unauth_user_err.set_author(name=client.user.name, icon_url=client.user.avatar_url)
 
 	messages = []
@@ -370,12 +397,12 @@ async def remove(ctx, *args):
 		flag = locs.pop(args, None)
 		if not flag:
 			messages.append(unknown_loc_err)
-			await reaction_controlled_embed(ctx, messages, 10)
+			await reaction_controlled_embed(ctx, messages, 20)
 			return
 		dump_json_data(locs, json_files['locations'])
 		return
 	messages.append(unauth_user_err)
-	await reaction_controlled_embed(ctx, messages, 10)
+	await reaction_controlled_embed(ctx, messages, 20)
 
 
 @client.command(name='find', description='Returns location data of all POI having names which contain the input name')
@@ -386,17 +413,19 @@ async def find(ctx, *args):
 	:param args: The query term being searched
 	:return: None
 	"""
+	update_log('find', json_files["log"], ctx)
 	await ctx.message.delete()
 	query = ''
 	try:
 		for i in args:
 			query += i.lower()
-		locs = load_json_data("./.resources/Locations.json")
+		locs = load_json_data(json_files['locations'])
 		flag = True
 		location_string = f''
 		for i in locs:
 			if query in i:
-				location_string += f'***{i}***\n*dim:* {locs[i]["Dimension"]}, *x:* {locs[i]["X"]}, *y:* {locs[i]["Y"]}, *z:* {locs[i]["Z"]}\n'
+				location_string += f'***{i}***\n*dim:* **{locs[i]["Dimension"]}**, *x:* **{locs[i]["X"]}**,\
+				 *y:* **{locs[i]["Y"]}**, *z:* **{locs[i]["Z"]}**\n'
 				if flag:
 					flag = False  # sets flag to false so we know not to send an unknown_loc_err
 	except IndexError:
@@ -409,7 +438,7 @@ async def find(ctx, *args):
 	unknown_loc_err.set_author(name=client.user.name, icon_url=client.user.avatar_url)
 	if flag or not query:
 		messages.append(unknown_loc_err)
-		await reaction_controlled_embed(ctx, messages, 10)
+		await reaction_controlled_embed(ctx, messages, 20)
 		return
 
 	# formatting valid locations
@@ -425,8 +454,14 @@ async def find(ctx, *args):
 @client.command(name='random', description='Returns a random location, if dimension is specified a random location in\
 that dimension is returned')
 async def random(ctx):
+	"""
+	Provides a randomly selected location from Locations.json
+	:param ctx: The message context
+	:return: None
+	"""
+	update_log('random', json_files["log"], ctx)
 	await ctx.message.delete()
-	locs = load_json_data("./.resources/Locations.json")
+	locs = load_json_data(json_files['locations'])
 
 	choice = rand.choice(list(locs.items()))
 
@@ -435,8 +470,8 @@ async def random(ctx):
 	selected_location = discord.Embed(title=f'**RANDOM LOCATION**', color=0x04FF00,
 									description=f"A random location found in the database")
 	selected_location.set_author(name=client.user.name, icon_url=client.user.avatar_url)
-	selected_location.add_field(name=f'***{choice[0]}***', value=f'*dim:* {choice[1]["Dimension"]},\
-	 *x:* {choice[1]["X"]}, *y:* {choice[1]["Y"]}, *z:* {choice[1]["Z"]}', inline=True)
+	selected_location.add_field(name=f'***{choice[0]}***', value=f'*dim:* **{choice[1]["Dimension"]}**,\
+	 *x:* **{choice[1]["X"]}**, *y:* **{choice[1]["Y"]}**, *z:* **{choice[1]["Z"]}**', inline=True)
 	messages.append(selected_location)
 
 	await reaction_controlled_embed(ctx, messages, 60)
@@ -444,13 +479,64 @@ async def random(ctx):
 
 @client.command(name='near', description='Returns the five closest location in the same dimension as the input\
 coordinates')
-async def near(ctx):
-	pass
+async def near(ctx, *args):
+	"""
+	Returns the five nearest locations in the same dimension as the input coordinates
+	:param ctx: The message context
+	:param args: The reference location
+	:return: None
+	"""
+	update_log('near', json_files["log"], ctx)
+	await ctx.message.delete()
+	locs = load_json_data(json_files['locations'])
 
+	messages = []
+	# formatting format error message
+	format_err = discord.Embed(title='**FORMATTING ERROR**', color=0x0051FF,
+									  description="The location data provided was not formatted correctly")
+	format_err.set_author(name=client.user.name, icon_url=client.user.avatar_url)
+	format_err.add_field(name=f'***EXAMPLES:***', value='dimension, x-coord, y-coord, z-coord\nor\
+	\ndimension x-coord y-coord z-coord\n\n\
+	**Example:**\n o, 100, 72, -3200\nor\nN -67 -84 -900', inline=True)
 
-@client.command(name='stats', description='Returns contribution and query information for a selected user')
-async def stats(ctx):
-	pass
+	if len(args) != 4:
+		messages.append(format_err)
+		await reaction_controlled_embed(ctx, messages, 20)
+		return
+
+	try:
+		int(args[1])
+		int(args[2])
+		int(args[3])
+	except ValueError:
+		messages.append(format_err)
+		await reaction_controlled_embed(ctx, messages, 20)
+		return
+
+	def key_func(loc: tuple):
+		return loc[1]
+
+	distances = []
+	for i in locs:
+		if locs[i]["Dimension"][0] == args[0].lower():
+			distances.append(get_distance(i, locs[i]["X"], locs[i]["Y"], locs[i]["Z"],
+										  int(args[1]), int(args[2]), int(args[3])))
+	distances.sort(key=key_func, reverse=True)
+	near_by_list = ''
+	for i in range(5):
+		if not distances:
+			break
+		loc = distances.pop()[0]
+		near_by_list += f'***{loc}***\n*dim:* **{locs[loc]["Dimension"]}**,\
+	 *x:* **{locs[loc]["X"]}**, *y:* **{locs[loc]["Y"]}**, *z:* **{locs[loc]["Z"]}**\n'
+
+	# formatting near by message
+	near_by_msg = discord.Embed(title='**NEAREST LOCATIONS**', color=0x04FF00,
+								description=f"A list of the nearest locations to the input coordinates")
+	near_by_msg.set_author(name=client.user.name, icon_url=client.user.avatar_url)
+	near_by_msg.add_field(name=f'***Near by:***', value=near_by_list, inline=True)
+	messages.append(near_by_msg)
+	await reaction_controlled_embed(ctx, messages, 60)
 
 
 @client.command(name='server', description='Returns server and player info at the time of request')
@@ -460,6 +546,7 @@ async def server(ctx):
 	:param ctx: Command context passed
 	:return: None
 	"""
+	update_log('server', json_files["log"], ctx)
 	await ctx.message.delete()  # deletes users message to prevent buildup of commands
 
 	status = get_server_status(minecraft_server_ip)
