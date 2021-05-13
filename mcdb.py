@@ -10,7 +10,7 @@ import asyncio
 import mcstatus
 from mcstatus import MinecraftServer
 import json
-import random
+import random as rand
 from datetime import datetime
 
 
@@ -42,7 +42,7 @@ emojis = {
 	'close': '\U0000274C'
 }
 
-authorized_users = {
+authorized_users = {  # dict is for storing authorized Discord ids
 
 }
 
@@ -326,9 +326,16 @@ async def add(ctx, *args):
 				messages.append(format_err)
 				await reaction_controlled_embed(ctx, messages, 10)
 				return
+			if new_loc[0] == "o":
+				new_loc[0] = "overworld"
+			elif new_loc[0] == "n":
+				new_loc[0] = "nether"
+			else:
+				new_loc[0] = "end"
 			locs[new_loc[1]] = {"Dimension": new_loc[0], "X": new_loc[2], "Y": new_loc[3], "Z": new_loc[4]}
 			dump_json_data(locs, json_files['locations'])
 		else:
+			print(new_loc[0])
 			messages.append(format_err)
 			await reaction_controlled_embed(ctx, messages, 10)
 			return
@@ -372,14 +379,67 @@ async def remove(ctx, *args):
 
 
 @client.command(name='find', description='Returns location data of all POI having names which contain the input name')
-async def find(ctx):
-	pass
+async def find(ctx, *args):
+	"""
+	Finds and returns all locations in Locations.json that contain the search query in their name
+	:param ctx: The message context
+	:param args: The query term being searched
+	:return: None
+	"""
+	await ctx.message.delete()
+	query = ''
+	try:
+		for i in args:
+			query += i.lower()
+		locs = load_json_data("./.resources/Locations.json")
+		flag = True
+		location_string = f''
+		for i in locs:
+			if query in i:
+				location_string += f'***{i}***\n*dim:* {locs[i]["Dimension"]}, *x:* {locs[i]["X"]}, *y:* {locs[i]["Y"]}, *z:* {locs[i]["Z"]}\n'
+				if flag:
+					flag = False  # sets flag to false so we know not to send an unknown_loc_err
+	except IndexError:
+		query = False
+
+	messages = []
+	# formatting unknown location error
+	unknown_loc_err = discord.Embed(title=f'**UNKNOWN LOCATION**', color=0xFF9E00,
+									description='The name you tried to find does not exist in the database')
+	unknown_loc_err.set_author(name=client.user.name, icon_url=client.user.avatar_url)
+	if flag or not query:
+		messages.append(unknown_loc_err)
+		await reaction_controlled_embed(ctx, messages, 10)
+		return
+
+	# formatting valid locations
+	valid_locations = discord.Embed(title=f'**REQUESTED LOCATIONS**', color=0x04FF00,
+									description=f"These are the stored locations that had names similar to '{query}'")
+	valid_locations.set_author(name=client.user.name, icon_url=client.user.avatar_url)
+	valid_locations.add_field(name=f"**Locations related to '{query}':**", value=location_string, inline=True)
+
+	messages.append(valid_locations)
+	await reaction_controlled_embed(ctx, messages, 60)
 
 
-@client.command(name='random', description='Returns a random location, if dimension is specified a random POI in that\
-dimension is returned')
+@client.command(name='random', description='Returns a random location, if dimension is specified a random location in\
+that dimension is returned')
 async def random(ctx):
-	pass
+	await ctx.message.delete()
+	locs = load_json_data("./.resources/Locations.json")
+
+	choice = rand.choice(list(locs.items()))
+
+	messages = []
+	# formatting selected location
+	selected_location = discord.Embed(title=f'**RANDOM LOCATION**', color=0x04FF00,
+									description=f"A random location found in the database")
+	selected_location.set_author(name=client.user.name, icon_url=client.user.avatar_url)
+	selected_location.add_field(name=f'***{choice[0]}***', value=f'*dim:* {choice[1]["Dimension"]},\
+	 *x:* {choice[1]["X"]}, *y:* {choice[1]["Y"]}, *z:* {choice[1]["Z"]}', inline=True)
+	messages.append(selected_location)
+
+	await reaction_controlled_embed(ctx, messages, 60)
 
 
 @client.command(name='near', description='Returns the five closest location in the same dimension as the input\
