@@ -42,6 +42,10 @@ emojis = {
 	'close': '\U0000274C'
 }
 
+authorized_users = {
+
+}
+
 
 """ Helper Functions """
 
@@ -197,7 +201,7 @@ def updated_member_info(file: str, members_online: list):
 	return total_members, admin_online, member_list
 
 
-async def reaction_controlled_embed(ctx: discord.ext.commands.context.Context, messages: list):
+async def reaction_controlled_embed(ctx: discord.ext.commands.context.Context, messages: list, timeout: float):
 	"""
 	Passes a list of embedded messages and provides reaction controls for them on Discord for users
 	:param ctx: The context of the command called
@@ -224,7 +228,7 @@ async def reaction_controlled_embed(ctx: discord.ext.commands.context.Context, m
 			await msg.add_reaction(emojis['right_arrow'])
 		await msg.add_reaction(emojis['close'])
 		try:
-			react, user = await client.wait_for('reaction_add', check=predicate(msg, l, r), timeout=60.0)
+			react, user = await client.wait_for('reaction_add', check=predicate(msg, l, r), timeout=timeout)
 		except asyncio.TimeoutError:  # user has 60.0 secs to react to message else it is deleted and loop exits
 			await msg.delete()
 			break
@@ -273,12 +277,18 @@ async def on_message(message):
 
 @client.command(name='add', description='Adds a correctly formatted location to the database')
 async def add(ctx, *args):
+	"""
+	Adds a new location to the locations.json file
+	:param ctx: The context of the message
+	:param args: All arguments following the add command
+	:return: None
+	"""
 	await ctx.message.delete()
 	locs = load_json_data("./.resources/Locations.json")
 
 	messages = []
 	# formatting error message
-	format_err = discord.Embed(title=f'**FORMATTING ERROR**', color=0xEC1C1C,
+	format_err = discord.Embed(title=f'**FORMATTING ERROR**', color=0x0051FF,
 							   description='The format of the location data provided was not formatted correctly')
 	format_err.set_author(name=client.user.name, icon_url=client.user.avatar_url)
 	format_err.add_field(name=f"**Examples**",
@@ -300,7 +310,7 @@ async def add(ctx, *args):
 	new_loc = []
 	if len(args) != 5:
 		messages.append(format_err)
-		await reaction_controlled_embed(ctx, messages)
+		await reaction_controlled_embed(ctx, messages, 10)
 		return
 	for i in range(len(args)):
 		new_loc.append(args[i].lower().replace(",", ""))  # removes commas from all components
@@ -314,31 +324,66 @@ async def add(ctx, *args):
 				int(new_loc[4])
 			except ValueError:
 				messages.append(format_err)
-				await reaction_controlled_embed(ctx, messages)
+				await reaction_controlled_embed(ctx, messages, 10)
 				return
 			locs[new_loc[1]] = {"Dimension": new_loc[0], "X": new_loc[2], "Y": new_loc[3], "Z": new_loc[4]}
 			dump_json_data(locs, json_files['locations'])
 		else:
 			messages.append(format_err)
-			await reaction_controlled_embed(ctx, messages)
+			await reaction_controlled_embed(ctx, messages, 10)
 			return
 	else:
 		messages.append(already_exists_err)
-		await reaction_controlled_embed(ctx, messages)
+		await reaction_controlled_embed(ctx, messages, 10)
 
 
-@client.command(name='find', description='Returns POI data of all POI having names which contain the input name')
+@client.command(name='remove', description='Removes an existing location from the database')
+async def remove(ctx, *args):
+	"""
+	Removes an existing location from the Locations.json file
+	:param ctx: The message context
+	:param args: The name of the location to be removed
+	:return: None
+	"""
+	await ctx.message.delete()
+	locs = load_json_data("./.resources/Locations.json")
+
+	# formatting location name already exists
+	unknown_loc_err = discord.Embed(title=f'**UNKNOWN LOCATION**', color=0xFF9E00,
+									   description='The name you tried to remove does not exist in the database')
+	unknown_loc_err.set_author(name=client.user.name, icon_url=client.user.avatar_url)
+
+	# formatting unauthorized user
+	unauth_user_err = discord.Embed(title=f'**UNAUTHORIZED USER**', color=0xFFFF00,
+									   description='This command is only for use by selected users')
+	unauth_user_err.set_author(name=client.user.name, icon_url=client.user.avatar_url)
+
+	messages = []
+	if ctx.message.author.id in authorized_users.values():
+		flag = locs.pop(args, None)
+		if not flag:
+			messages.append(unknown_loc_err)
+			await reaction_controlled_embed(ctx, messages, 10)
+			return
+		dump_json_data(locs, json_files['locations'])
+		return
+	messages.append(unauth_user_err)
+	await reaction_controlled_embed(ctx, messages, 10)
+
+
+@client.command(name='find', description='Returns location data of all POI having names which contain the input name')
 async def find(ctx):
 	pass
 
 
-@client.command(name='random', description='Returns a random POI, if dimension is specified a random POI in that\
+@client.command(name='random', description='Returns a random location, if dimension is specified a random POI in that\
 dimension is returned')
 async def random(ctx):
 	pass
 
 
-@client.command(name='near', description='Returns the five closest POI in the same dimension as the input coordinates')
+@client.command(name='near', description='Returns the five closest location in the same dimension as the input\
+coordinates')
 async def near(ctx):
 	pass
 
@@ -395,7 +440,7 @@ async def server(ctx):
 	messages.append(member_status)
 
 	# loop to send embedded messages and allow for reaction controls
-	await reaction_controlled_embed(ctx, messages)
+	await reaction_controlled_embed(ctx, messages, 60)
 
 
 if __name__ == '__main__':
