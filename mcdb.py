@@ -1,5 +1,5 @@
 """
-Title: Minecraft-Coordinate-Database (MCDB)
+Title: Minecraft-Coordinate-Discord-Bot (MCDB)
 Author: Billy Cobb
 Desc: A Minecraft coordinate and player database Discord bot script
 """
