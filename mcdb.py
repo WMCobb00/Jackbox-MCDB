@@ -1,7 +1,7 @@
 """
-Title: Jackbox-Minecraft-Coordinate-Database
+Title: Minecraft-Coordinate-Database (MCDB)
 Author: Billy Cobb
-Desc: A Minecraft coordinate and player database Discord bot for the Jackbox Discord server
+Desc: A Minecraft coordinate and player database Discord bot script
 """
 
 import discord
@@ -42,7 +42,7 @@ emojis = {
 	'close': '\U0000274C'
 }
 
-authorized_users = {  # dict is for storing authorized Discord ids
+authorized_users = {  # dict is for storing authorized Discord ids (used for remove command)
 
 }
 
@@ -290,11 +290,32 @@ async def on_message(message):
 	:param message: Any message sent in a server the bot is in
 	:return: None
 	"""
-	if message.channel.name == 'general':  # set the name of the channel the bot should listen to here
-		await client.process_commands(message)
+	#if message.channel.id == :  # set the name of the channel the bot should listen to here
+	await client.process_commands(message)
 
 
 """ Client Commands """
+
+
+@client.command(name='help', description='Provides users with a list of commands')
+async def help(ctx):
+	update_log('help', json_files["log"], ctx)
+	await ctx.message.delete()
+
+	messages = []
+	# formatting valid locations
+	mcdb_commands = discord.Embed(title=f'**MCDB COMMANDS**', color=0x42F584,
+									description=f"These are the commands available for use")
+	mcdb_commands.set_author(name=client.user.name, icon_url=client.user.avatar_url)
+	mcdb_commands.add_field(name=f"**Use {cmd_prefix}[command name][params]**", value='help\n'
+																				'add[dim, loc name, x, y, z]\n'
+																				'remove[loc name]\n'
+																				'find[loc name]\n'
+																				'random\n'
+																				'near[dim, x, y, z]\n'
+																				'server\n', inline=True)
+	messages.append(mcdb_commands)
+	await reaction_controlled_embed(ctx, messages, 60)
 
 
 @client.command(name='add', description='Adds a correctly formatted location to the database')
@@ -305,7 +326,7 @@ async def add(ctx, *args):
 	:param args: All arguments following the add command
 	:return: None
 	"""
-	update_log('add', json_files["log"], ctx)
+	update_log(f'add {args}', json_files["log"], ctx)
 	await ctx.message.delete()
 	locs = load_json_data("./.resources/Locations.json")
 
@@ -319,7 +340,7 @@ async def add(ctx, *args):
 								'Symbol of dimension (i.e. Overworld=O, Nether=N, End=E),\
 								 Name of location, x-coord, y-coord, z-coord\n'
 								'or\n'
-								'Name of location x-coord y-coord z-coord\n\n'
+								'Dimension Name of location x-coord y-coord z-coord\n\n'
 								'Examples:\n\n'
 								'Overworld Zombie Spawner:\n'
 								'O, Zombie Spawner, 53, 35, 639\n\n'
@@ -333,6 +354,7 @@ async def add(ctx, *args):
 
 	# checks to see that message is formatted correctly
 	new_loc = []
+	print(len(args))
 	if len(args) != 5:
 		messages.append(format_err)
 		await reaction_controlled_embed(ctx, messages, 20)
@@ -342,7 +364,7 @@ async def add(ctx, *args):
 		if i != 1:
 			new_loc[i].replace(" ", "")  # removes spaces from all components except for name
 	if new_loc[1] not in locs:
-		if new_loc[0] == "o" or "n" or "e":
+		if new_loc[0].lower() == "o" or "n" or "e":
 			try:
 				int(new_loc[2])
 				int(new_loc[3])
@@ -378,7 +400,7 @@ async def remove(ctx, *args):
 	:param args: The name of the location to be removed
 	:return: None
 	"""
-	update_log('remove', json_files["log"], ctx)
+	update_log(f'remove {args}', json_files["log"], ctx)
 	await ctx.message.delete()
 	locs = load_json_data("./.resources/Locations.json")
 
@@ -413,7 +435,7 @@ async def find(ctx, *args):
 	:param args: The query term being searched
 	:return: None
 	"""
-	update_log('find', json_files["log"], ctx)
+	update_log(f'find {args}', json_files["log"], ctx)
 	await ctx.message.delete()
 	query = ''
 	try:
@@ -486,7 +508,7 @@ async def near(ctx, *args):
 	:param args: The reference location
 	:return: None
 	"""
-	update_log('near', json_files["log"], ctx)
+	update_log(f'near {args}', json_files["log"], ctx)
 	await ctx.message.delete()
 	locs = load_json_data(json_files['locations'])
 
